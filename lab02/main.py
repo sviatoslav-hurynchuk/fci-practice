@@ -7,7 +7,7 @@ from lab02.ui import FoxHuntUI
 
 def main():
     parser = argparse.ArgumentParser(description="Fox Hunt Simulated Annealing Client")
-    parser.add_argument("--variant", type=int, default=4, help="Variant number")
+    parser.add_argument("--variant", type=int, default=2, help="Variant number")
     parser.add_argument("--student", type=str, default="Гуринчук Святослав", help="Student name")
     parser.add_argument("--cli", action="store_true", help="Run in CLI headless mode")
     args = parser.parse_args()

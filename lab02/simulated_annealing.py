@@ -12,10 +12,10 @@ class SimulatedAnnealingHunter:
         start_x: int,
         start_y: int,
         move_fn: Callable[[int, int], dict],
-        t_start: float = 50.0,
+        t_start: float = 40.0,
         t_min: float = 0.02,
-        alpha: float = 0.94,
-        r_max: int = 30,
+        alpha: float = 0.91,
+        r_max: int = 25,
         max_steps: int = 1000
     ):
         self.grid = grid
