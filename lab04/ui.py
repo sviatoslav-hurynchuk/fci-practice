@@ -1,6 +1,8 @@
 import json
 import math
 import os
+import subprocess
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Optional
@@ -26,6 +28,20 @@ class DockSimUI:
 
         self.client: Optional[DockSimClient] = None
         self.policy = TabularPolicy(mode="separate")
+        policy_candidates = [
+            "best_policy_v02.json",
+            os.path.join(os.path.dirname(__file__), "best_policy_v02.json"),
+            os.path.join(os.path.dirname(__file__), "..", "best_policy_v02.json"),
+            r"c:\Users\Админ\OneDrive\Рабочий стол\Політех\ООІ Петросян\лр4\best_policy_v02.json"
+        ]
+        for p_cand in policy_candidates:
+            if os.path.exists(p_cand):
+                try:
+                    self.policy = TabularPolicy.load_json(p_cand)
+                    break
+                except Exception:
+                    pass
+
         self.control_mode = tk.StringVar(value="auto")
         self.is_running = False
         self.current_state = None
@@ -191,6 +207,20 @@ class DockSimUI:
         self.canvas_chart2 = tk.Canvas(chart_card2, bg="#FFFFFF", highlightthickness=0)
         self.canvas_chart2.pack(fill=tk.BOTH, expand=True)
 
+    def _find_docksim_exe(self) -> Optional[str]:
+        candidates = [
+            r"c:\Users\Админ\OneDrive\Рабочий стол\Політех\ООІ Петросян\лр4\V02\docksim_V02_windows_amd64.exe",
+            os.path.join(os.path.dirname(__file__), "..", "..", "OneDrive", "Рабочий стол", "Політех", "ООІ Петросян", "лр4", "V02", "docksim_V02_windows_amd64.exe"),
+            os.path.join(os.path.dirname(__file__), "V02", "docksim_V02_windows_amd64.exe"),
+            os.path.join(os.path.dirname(__file__), "..", "V02", "docksim_V02_windows_amd64.exe"),
+            os.path.join("V02", "docksim_V02_windows_amd64.exe"),
+            "docksim_V02_windows_amd64.exe"
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                return os.path.abspath(c)
+        return None
+
     def _toggle_connection(self):
         if self.client is None:
             try:
@@ -202,7 +232,29 @@ class DockSimUI:
                 self._update_status_pill("● Підключено (V02)", "#DCFCE7", "#16A34A")
                 self._reset_sim()
             except Exception as e:
-                messagebox.showerror("Помилка підключення", f"Не вдалося з'єднатися з DockSim на порту {self.port}:\n{e}")
+                exe_path = self._find_docksim_exe()
+                if exe_path and messagebox.askyesno(
+                    "Запуск DockSim",
+                    f"Сервер DockSim не запущено на порту {self.port}.\n\nЗнайдено симулятор:\n{exe_path}\n\nЗапустити сервер автоматично зараз?"
+                ):
+                    try:
+                        subprocess.Popen([exe_path, "--mode", "play"])
+                        time.sleep(1.2)
+                        self.client = DockSimClient(self.host, self.port)
+                        self.btn_connect.configure(text="Відключити", bg="#EF4444")
+                        self.btn_start.configure(state=tk.NORMAL)
+                        self.btn_step.configure(state=tk.NORMAL)
+                        self.btn_reset.configure(state=tk.NORMAL)
+                        self._update_status_pill("● Підключено (V02)", "#DCFCE7", "#16A34A")
+                        self._reset_sim()
+                        return
+                    except Exception as ex2:
+                        messagebox.showerror("Помилка підключення", f"Не вдалося підключитися після запуску:\n{ex2}")
+                        return
+                messagebox.showerror(
+                    "Помилка підключення",
+                    f"Не вдалося з'єднатися з DockSim на порту {self.port}.\n\nБудь ласка, спочатку запустіть симулятор:\ndocksim --mode play\n\nТехнічні деталі: {e}"
+                )
         else:
             self._stop_run()
             self.client.close()
