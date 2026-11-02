@@ -1,7 +1,10 @@
 import argparse
 import os
+import subprocess
 import sys
 import time
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from lab04.client import DockSimClient
 from lab04.policy import TabularPolicy
@@ -10,25 +13,55 @@ from lab04.genetic_algorithm import GeneticAlgorithmTrainer, evaluate_individual
 from lab04.ui import DockSimUI
 
 
+def find_docksim_exe():
+    candidates = [
+        r"c:\Users\Админ\OneDrive\Рабочий стол\Політех\ООІ Петросян\лр4\V02\docksim_V02_windows_amd64.exe",
+        os.path.join(os.path.dirname(__file__), "..", "..", "OneDrive", "Рабочий стол", "Політех", "ООІ Петросян", "лр4", "V02", "docksim_V02_windows_amd64.exe"),
+        os.path.join(os.path.dirname(__file__), "V02", "docksim_V02_windows_amd64.exe"),
+        os.path.join(os.path.dirname(__file__), "..", "V02", "docksim_V02_windows_amd64.exe"),
+        os.path.join("V02", "docksim_V02_windows_amd64.exe"),
+        "docksim_V02_windows_amd64.exe"
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return os.path.abspath(c)
+    return None
+
+
 def run_cli_train(port: int = 47555, generations: int = 15, pop_size: int = 30, workers: int = 1, out_file: str = "best_policy_v02.json"):
+    server_proc = None
+    try:
+        c = DockSimClient(port=port)
+        c.close()
+    except Exception:
+        exe = find_docksim_exe()
+        if exe:
+            print(f"Запуск сервера DockSim у режимі train на порту {port}...")
+            server_proc = subprocess.Popen([exe, "--mode", "train", "--port", str(port)])
+            time.sleep(1.2)
+
     print(f"=== Початок навчання генетичного алгоритму (GA) | Популяція: {pop_size}, Поколінь: {generations} ===")
-    trainer = GeneticAlgorithmTrainer(pop_size=pop_size, port=port, workers=workers)
-    t0 = time.perf_counter()
+    try:
+        trainer = GeneticAlgorithmTrainer(pop_size=pop_size, port=port, workers=workers)
+        t0 = time.perf_counter()
 
-    for gen in range(1, generations + 1):
-        st = trainer.step()
-        b_ev = st["best_eval"]
-        dock_cnt = b_ev.get("docked_count", 0)
-        fit = st["best_fitness"]
-        avg_fit = st["avg_fitness"]
-        rate = st["best_dock_rate"]
-        print(f"Покоління {gen:2d}/{generations:2d} | Фітнес: {fit:6.1f} (сер: {avg_fit:6.1f}) | Стикування: {rate:5.1f}% ({dock_cnt} шт) | Час: {time.perf_counter()-t0:.1f}с")
+        for gen in range(1, generations + 1):
+            st = trainer.step()
+            b_ev = st["best_eval"]
+            dock_cnt = b_ev.get("docked_count", 0)
+            fit = st["best_fitness"]
+            avg_fit = st["avg_fitness"]
+            rate = st["best_dock_rate"]
+            print(f"Покоління {gen:2d}/{generations:2d} | Фітнес: {fit:6.1f} (сер: {avg_fit:6.1f}) | Стикування: {rate:5.1f}% ({dock_cnt} шт) | Час: {time.perf_counter()-t0:.1f}с")
 
-    elapsed = time.perf_counter() - t0
-    best_policy = TabularPolicy(chromosome=trainer.best_individual)
-    best_policy.save_json(out_file)
-    print(f"=== Навчання завершено за {elapsed:.2f} с! Найкращу політику збережено у: {out_file} ===")
-    return best_policy
+        elapsed = time.perf_counter() - t0
+        best_policy = TabularPolicy(chromosome=trainer.best_individual)
+        best_policy.save_json(out_file)
+        print(f"=== Навчання завершено за {elapsed:.2f} с! Найкращу політику збережено у: {out_file} ===")
+        return best_policy
+    finally:
+        if server_proc:
+            server_proc.terminate()
 
 
 def run_cli_evaluate_auto(port: int = 47555, policy_file: str = "best_policy_v02.json"):
