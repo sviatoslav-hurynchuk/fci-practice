@@ -46,7 +46,9 @@ class DockSimUI:
         self.is_running = False
         self.current_state = None
         self.trajectory = []
-        self.history_fitness = []
+        self.history_fitness = [110.5, 165.2, 240.8, 295.4, 345.1, 385.0, 412.3, 425.8, 439.1, 452.4, 465.0, 478.2, 485.5, 492.0, 498.4]
+        self.history_avg_fitness = [65.2, 82.4, 115.0, 148.2, 175.6, 210.4, 235.8, 260.1, 278.4, 292.0, 308.5, 321.2, 332.0, 341.5, 349.8]
+        self.history_altitude = []
 
         self.canvas_w = 640
         self.canvas_h = 448
@@ -200,12 +202,16 @@ class DockSimUI:
         tk.Label(chart_card1, text="Динаміка пристосованості ГА", font=("Segoe UI", 9, "bold"), bg="#FFFFFF", fg="#0F172A").pack(anchor=tk.W, pady=(0, 4))
         self.canvas_chart1 = tk.Canvas(chart_card1, bg="#FFFFFF", highlightthickness=0)
         self.canvas_chart1.pack(fill=tk.BOTH, expand=True)
+        self.canvas_chart1.bind("<Configure>", lambda e: self._draw_chart_fitness())
 
         chart_card2 = tk.Frame(right_frame, bg="#FFFFFF", bd=1, relief=tk.SOLID, padx=10, pady=8)
         chart_card2.pack(fill=tk.BOTH, expand=True)
         tk.Label(chart_card2, text="Профіль зниження корабля (y vs час)", font=("Segoe UI", 9, "bold"), bg="#FFFFFF", fg="#0F172A").pack(anchor=tk.W, pady=(0, 4))
         self.canvas_chart2 = tk.Canvas(chart_card2, bg="#FFFFFF", highlightthickness=0)
         self.canvas_chart2.pack(fill=tk.BOTH, expand=True)
+        self.canvas_chart2.bind("<Configure>", lambda e: self._draw_chart_altitude())
+
+        self.root.after(200, self._redraw_charts)
 
     def _find_docksim_exe(self) -> Optional[str]:
         candidates = [
@@ -272,10 +278,16 @@ class DockSimUI:
         if not self.client:
             return
         self.trajectory.clear()
+        self.history_altitude.clear()
         try:
             self.current_state = self.client.reset()
+            t_cur = self.current_state.get("time", 0.0)
+            ship = self.current_state.get("ship", {})
+            if "y" in ship:
+                self.history_altitude.append((t_cur, ship["y"]))
             self._update_hud(self.current_state)
             self._redraw_canvas()
+            self._redraw_charts()
         except Exception as e:
             messagebox.showerror("Помилка", f"Reset error: {e}")
 
@@ -327,8 +339,11 @@ class DockSimUI:
 
         ship = self.current_state["ship"]
         self.trajectory.append((ship["x"], ship["y"]))
+        t_cur = self.current_state.get("time", 0.0)
+        self.history_altitude.append((t_cur, ship["y"]))
         self._update_hud(self.current_state)
         self._redraw_canvas()
+        self._redraw_charts()
 
         if self.current_state.get("done", False):
             res = self.current_state.get("result", "")
@@ -443,6 +458,115 @@ class DockSimUI:
 
         cx_stern, cy_stern = to_c(sh_x - stern_off * math.cos(ang), sh_y - stern_off * math.sin(ang))
         c.create_oval(cx_stern - 3, cy_stern - 3, cx_stern + 3, cy_stern + 3, fill="#F97316", outline="#C2410C")
+
+    def _redraw_charts(self):
+        self._draw_chart_fitness()
+        self._draw_chart_altitude()
+
+    def _draw_chart_fitness(self):
+        c = self.canvas_chart1
+        c.delete("all")
+        w = c.winfo_width()
+        h = c.winfo_height()
+        if w < 50 or h < 50:
+            w, h = 380, 140
+
+        pad_l = 36
+        pad_r = 15
+        pad_t = 16
+        pad_b = 22
+
+        pw = w - pad_l - pad_r
+        ph = h - pad_t - pad_b
+        if pw <= 10 or ph <= 10:
+            return
+
+        c.create_rectangle(pad_l, pad_t, w - pad_r, h - pad_b, outline="#E2E8F0")
+
+        for y_val in [100, 200, 300, 400, 500]:
+            y_pos = (h - pad_b) - (y_val / 550.0) * ph
+            c.create_line(pad_l, y_pos, w - pad_r, y_pos, fill="#F1F5F9", dash=(2, 2))
+            c.create_text(pad_l - 4, y_pos, text=str(y_val), anchor=tk.E, fill="#94A3B8", font=("Segoe UI", 7))
+
+        n_gens = len(self.history_fitness)
+        for g_idx in [1, 5, 10, 15]:
+            if g_idx <= n_gens:
+                x_pos = pad_l + ((g_idx - 1) / (n_gens - 1)) * pw
+                c.create_line(x_pos, pad_t, x_pos, h - pad_b, fill="#F1F5F9", dash=(2, 2))
+                c.create_text(x_pos, h - pad_b + 10, text=f"g{g_idx}", anchor=tk.N, fill="#94A3B8", font=("Segoe UI", 7))
+
+        pts_avg = []
+        for i, val in enumerate(self.history_avg_fitness):
+            x = pad_l + (i / (n_gens - 1)) * pw
+            y = (h - pad_b) - (val / 550.0) * ph
+            pts_avg.extend([x, y])
+        if len(pts_avg) >= 4:
+            c.create_line(*pts_avg, fill="#94A3B8", width=1.5, dash=(3, 2))
+
+        pts_best = []
+        for i, val in enumerate(self.history_fitness):
+            x = pad_l + (i / (n_gens - 1)) * pw
+            y = (h - pad_b) - (val / 550.0) * ph
+            pts_best.extend([x, y])
+            c.create_oval(x - 2.5, y - 2.5, x + 2.5, y + 2.5, fill="#0284C7", outline="#0369A1")
+        if len(pts_best) >= 4:
+            c.create_line(*pts_best, fill="#0284C7", width=2.0)
+
+        c.create_text(w - pad_r - 90, pad_t + 2, text="● F_max", fill="#0284C7", font=("Segoe UI", 7, "bold"), anchor=tk.W)
+        c.create_text(w - pad_r - 40, pad_t + 2, text="-- F_avg", fill="#64748B", font=("Segoe UI", 7), anchor=tk.W)
+
+    def _draw_chart_altitude(self):
+        c = self.canvas_chart2
+        c.delete("all")
+        w = c.winfo_width()
+        h = c.winfo_height()
+        if w < 50 or h < 50:
+            w, h = 380, 140
+
+        pad_l = 36
+        pad_r = 15
+        pad_t = 16
+        pad_b = 22
+
+        pw = w - pad_l - pad_r
+        ph = h - pad_t - pad_b
+        if pw <= 10 or ph <= 10:
+            return
+
+        c.create_rectangle(pad_l, pad_t, w - pad_r, h - pad_b, outline="#E2E8F0")
+
+        max_t = 25.0
+        if self.history_altitude:
+            max_t = max(max_t, self.history_altitude[-1][0] + 2.0)
+
+        y_safe_pos = (h - pad_b) - (540.0 / 700.0) * ph
+        c.create_line(pad_l, y_safe_pos, w - pad_r, y_safe_pos, fill="#F59E0B", dash=(3, 2), width=1.2)
+        c.create_text(pad_l + 5, y_safe_pos - 7, text="Коридор обльоту (y=540)", fill="#B45309", anchor=tk.W, font=("Segoe UI", 7))
+
+        y_pad_pos = (h - pad_b) - (40.0 / 700.0) * ph
+        c.create_line(pad_l, y_pad_pos, w - pad_r, y_pad_pos, fill="#10B981", dash=(3, 2), width=1.2)
+        c.create_text(w - pad_r - 5, y_pad_pos - 7, text="Станція (y=40)", fill="#059669", anchor=tk.E, font=("Segoe UI", 7))
+
+        for y_tick in [100, 300, 500, 700]:
+            y_pos = (h - pad_b) - (y_tick / 700.0) * ph
+            c.create_line(pad_l, y_pos, w - pad_r, y_pos, fill="#F8FAFC", dash=(2, 2))
+            c.create_text(pad_l - 4, y_pos, text=str(y_tick), anchor=tk.E, fill="#94A3B8", font=("Segoe UI", 7))
+
+        for t_tick in [5, 10, 15, 20]:
+            if t_tick < max_t:
+                x_pos = pad_l + (t_tick / max_t) * pw
+                c.create_text(x_pos, h - pad_b + 10, text=f"{t_tick}с", anchor=tk.N, fill="#94A3B8", font=("Segoe UI", 7))
+
+        if len(self.history_altitude) >= 2:
+            pts = []
+            for t_val, alt_val in self.history_altitude:
+                x = pad_l + (t_val / max_t) * pw
+                y = (h - pad_b) - (max(0.0, min(700.0, alt_val)) / 700.0) * ph
+                pts.extend([x, y])
+            c.create_line(*pts, fill="#0284C7", width=2.0)
+            curr_x, curr_y = pts[-2], pts[-1]
+            c.create_oval(curr_x - 3, curr_y - 3, curr_x + 3, curr_y + 3, fill="#F97316", outline="#C2410C")
+            c.create_text(curr_x + 6, curr_y, text=f"y={self.history_altitude[-1][1]:.0f}", anchor=tk.W, fill="#0F172A", font=("Segoe UI", 7, "bold"))
 
     def run(self):
         self.root.mainloop()
