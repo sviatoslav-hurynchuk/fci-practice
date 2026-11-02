@@ -49,6 +49,7 @@ class DockSimUI:
         self.history_fitness = [110.5, 165.2, 240.8, 295.4, 345.1, 385.0, 412.3, 425.8, 439.1, 452.4, 465.0, 478.2, 485.5, 492.0, 498.4]
         self.history_avg_fitness = [65.2, 82.4, 115.0, 148.2, 175.6, 210.4, 235.8, 260.1, 278.4, 292.0, 308.5, 321.2, 332.0, 341.5, 349.8]
         self.history_altitude = []
+        self.pressed_keys = set()
 
         self.canvas_w = 640
         self.canvas_h = 448
@@ -56,6 +57,8 @@ class DockSimUI:
         self.scale_y = self.canvas_h / 700.0
 
         self._build_ui()
+        self.root.bind("<KeyPress>", self._on_key_press)
+        self.root.bind("<KeyRelease>", self._on_key_release)
 
     def _build_ui(self):
         top_panel = tk.Frame(self.root, bg="#FFFFFF", bd=1, relief=tk.SOLID, padx=10, pady=8)
@@ -323,8 +326,9 @@ class DockSimUI:
             return True
 
         if self.control_mode.get() == "manual":
-            keys = self.current_state.get("keys", [])
-            thrust, turn = ManualController.keys_to_action(keys)
+            server_keys = set(self.current_state.get("keys", []))
+            all_keys = list(server_keys | self.pressed_keys)
+            thrust, turn = ManualController.keys_to_action(all_keys)
         else:
             thrust, turn = self.policy.get_action(self.current_state)
 
@@ -567,6 +571,16 @@ class DockSimUI:
             curr_x, curr_y = pts[-2], pts[-1]
             c.create_oval(curr_x - 3, curr_y - 3, curr_x + 3, curr_y + 3, fill="#F97316", outline="#C2410C")
             c.create_text(curr_x + 6, curr_y, text=f"y={self.history_altitude[-1][1]:.0f}", anchor=tk.W, fill="#0F172A", font=("Segoe UI", 7, "bold"))
+
+    def _on_key_press(self, event):
+        k = event.keysym.lower()
+        if k in ("up", "down", "left", "right"):
+            self.pressed_keys.add(k)
+
+    def _on_key_release(self, event):
+        k = event.keysym.lower()
+        if k in self.pressed_keys:
+            self.pressed_keys.remove(k)
 
     def run(self):
         self.root.mainloop()
