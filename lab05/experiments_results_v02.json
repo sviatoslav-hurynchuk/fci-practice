@@ -1,0 +1,108 @@
+{
+  "task": "V02",
+  "reference_cost": 6558.587976449688,
+  "experiments": {
+    "beta_study": [
+      {
+        "beta": 1.0,
+        "avg_gap": 1.14,
+        "best_gap": 0.7,
+        "best_cost": 6604.79,
+        "avg_iter": 68.4,
+        "avg_time": 24.65
+      },
+      {
+        "beta": 3.0,
+        "avg_gap": 0.75,
+        "best_gap": 0.17,
+        "best_cost": 6569.9,
+        "avg_iter": 60.4,
+        "avg_time": 22.34
+      },
+      {
+        "beta": 5.0,
+        "avg_gap": 1.05,
+        "best_gap": 0.08,
+        "best_cost": 6563.77,
+        "avg_iter": 42.2,
+        "avg_time": 19.39
+      }
+    ],
+    "m_study": [
+      {
+        "m": 15,
+        "avg_gap": 0.98,
+        "best_gap": 0.08,
+        "best_cost": 6563.77,
+        "avg_time": 10.27
+      },
+      {
+        "m": 35,
+        "avg_gap": 0.71,
+        "best_gap": 0.08,
+        "best_cost": 6563.77,
+        "avg_time": 20.87
+      },
+      {
+        "m": 60,
+        "avg_gap": 0.9,
+        "best_gap": 0.54,
+        "best_cost": 6594.31,
+        "avg_time": 37.75
+      }
+    ],
+    "rho_study": [
+      {
+        "rho": 0.05,
+        "avg_gap": 0.88,
+        "best_gap": 0.21,
+        "best_cost": 6572.2,
+        "avg_time": 21.86
+      },
+      {
+        "rho": 0.1,
+        "avg_gap": 0.8,
+        "best_gap": 0.17,
+        "best_cost": 6569.9,
+        "avg_time": 21.78
+      },
+      {
+        "rho": 0.2,
+        "avg_gap": 0.72,
+        "best_gap": 0.55,
+        "best_cost": 6594.59,
+        "avg_time": 22.47
+      }
+    ],
+    "algo_study": [
+      {
+        "algorithm": "AS",
+        "avg_gap": 0.86,
+        "best_gap": 0.35,
+        "best_cost": 6581.53,
+        "avg_time": 19.4
+      },
+      {
+        "algorithm": "EAS",
+        "avg_gap": 0.82,
+        "best_gap": 0.51,
+        "best_cost": 6591.79,
+        "avg_time": 21.12
+      },
+      {
+        "algorithm": "MMAS",
+        "avg_gap": 0.76,
+        "best_gap": 0.32,
+        "best_cost": 6579.7,
+        "avg_time": 23.07
+      },
+      {
+        "algorithm": "ACS",
+        "avg_gap": 1.88,
+        "best_gap": 1.34,
+        "best_cost": 6646.69,
+        "avg_time": 13.89
+      }
+    ]
+  }
+}
