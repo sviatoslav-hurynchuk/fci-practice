@@ -6,7 +6,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from lab05.aco import AntColonySolver
 from lab05.client import VRPSimClient
